@@ -208,6 +208,7 @@ function fmtDate(val) {
   return s || null;
 }
 
+
 function setStatus(msg, type='info') {
   const el = document.getElementById('status');
   el.textContent = msg;
@@ -237,14 +238,17 @@ async function calculate() {
 
   await new Promise(r => setTimeout(r, 30)); // 让 UI 刷新
 
-  // 构建到货表索引（SKU → 行副本）
+  // 构建到货表索引（"当前日期|SKU" → 行副本）
   const arrive = new Map();
   for (const row of arriveData) {
-    const sku = String(row['SKU'] || '').trim();
-    if (!sku || arrive.has(sku)) continue;
+    const sku  = String(row['SKU']     || '').trim();
+    const dt   = String(row['当前日期'] || '').trim();
+    if (!sku || !dt) continue;
+    const key = `${dt}|${sku}`;
+    if (arrive.has(key)) continue;
     const r = {...row};
     for (const c of NUM_COLS) r[c] = toNum(r[c]);
-    arrive.set(sku, r);
+    arrive.set(key, r);
   }
 
   // 订单排序
@@ -261,18 +265,20 @@ async function calculate() {
   const results = [];
 
   for (let i = 0; i < orders.length; i++) {
-    const row  = orders[i];
-    const sku  = String(row['SKU'] || '').trim();
-    const qty  = toNum(row['注文個数']) || 1;
+    const row   = orders[i];
+    const sku   = String(row['SKU']     || '').trim();
+    const dt    = String(row['当前日期'] || '').trim();
+    const key   = `${dt}|${sku}`;          // ← 对象日期 + SKU 联合 key
+    const qty   = toNum(row['注文個数']) || 1;
     const step1 = String(row['第一步纳期'] || '').trim();
     let 納期 = null;
 
-    if (!arrive.has(sku)) {
+    if (!arrive.has(key)) {
       results.push({idx: row._origIdx, 納期: '在途及预定皆无，请提案。'});
       continue;
     }
 
-    const inv = arrive.get(sku);
+    const inv = arrive.get(key);
     const 商品状态 = String(inv['商品状態'] || inv['商品状态'] || '').trim();
 
     if (商品状态 === '无库存且不再销售' || 商品状态 === '预废弃但有待发货') {
