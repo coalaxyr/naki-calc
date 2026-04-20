@@ -273,6 +273,11 @@ async function calculate() {
     const step1 = String(row['第一步纳期'] || '').trim();
     let 納期 = null;
 
+    if (step1 === 'RSL有库存') {
+      results.push({idx: row._origIdx, 納期: 'RSL有库存'});
+      continue;
+    }
+
     if (!arrive.has(key)) {
       results.push({idx: row._origIdx, 納期: '在途及预定皆无，请提案。'});
       continue;
@@ -283,8 +288,6 @@ async function calculate() {
 
     if (商品状态 === '无库存且不再销售' || 商品状态 === '预废弃但有待发货') {
       納期 = '停产';
-    } else if (step1 === 'RSL有库存') {
-      納期 = 'RSL有库存';
     } else if (inv['GB在库数'] >= qty) {
       納期 = fmtDate(row['当前日期']) || '当日';
       inv['GB在库数'] -= qty;
